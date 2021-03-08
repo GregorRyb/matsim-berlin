@@ -5,12 +5,12 @@
 		<param name="mutationRange" value="7200.0" />
 	</module>
 	<module name="controler" >
-		<param name="lastIteration" value="500" />
+		<param name="lastIteration" value="3" />
 		<param name="overwriteFiles" value="failIfDirectoryExists" />
 		<param name="runId" value="berlin-v5.5-1pct" />
-		<param name="outputDirectory" value="./scenarios/berlin-v5.5-1pct/output-berlin-v5.5-1pct" />
-		<param name="writeEventsInterval" value="50" />
-		<param name="writePlansInterval" value="50" />
+		<param name="outputDirectory" value="D:/Gregor/Uni/TUCloud/Masterarbeit/Test/Output" />
+		<param name="writeEventsInterval" value="1" />
+		<param name="writePlansInterval" value="1" />
 	</module>
 	<module name="global" >
 		<param name="coordinateSystem" value="EPSG:31468" />
@@ -21,7 +21,7 @@
 		<param name="inputNetworkFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-network.xml.gz" />
 	</module>
 	<module name="plans" >
-		<param name="inputPlansFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-1pct/input/berlin-v5.5-1pct.plans.xml.gz" />
+		<param name="inputPlansFile" value="D:/Gregor/Uni/TUCloud/Masterarbeit/MATSim/Test/nput/berlin-v5.5-1pct.plans.xml.gz" />
 		<param name="removingUnnecessaryPlanAttributes" value="true" />
 	</module>
 	<module name="vehicles" >

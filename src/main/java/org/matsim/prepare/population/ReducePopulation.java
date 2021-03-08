@@ -42,14 +42,14 @@ public class ReducePopulation {
 		Config config = ConfigUtils.createConfig();
 		config.global().setCoordinateSystem("DHDN_GK4");
 		config.network().setInputFile("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/input/berlin-v5-network.xml.gz");
-		config.plans().setInputFile("/home/gregor/Downloads/berlin-drt-v5.5-1pct_drt-119.output_plans.xml.gz");
-		double factor = 0.1;
+		config.plans().setInputFile("D://Gregor//Uni//TUCloud//Masterarbeit//MATSim//Test//nput//berlin-v5.5-1pct.plans.xml.gz/");
+		double factor = 0.9;
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		
 		reducePopulation(scenario, factor);
 		
 		PopulationWriter popWriter = new PopulationWriter(scenario.getPopulation());
-		popWriter.write("/home/gregor/Downloads/berlin-drt-v5.5-1pct_drt-119_0.1.output_plans.xml.gz");
+		popWriter.write("D://Gregor//Uni//TUCloud//Masterarbeit//MATSim//Test//nput//berlin-v5.5-1pct.plans.xml.gz/");
 	}
 	
 	static void reducePopulation( Scenario scenario, double factor ) {

@@ -23,11 +23,14 @@ import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
 import org.apache.log4j.Logger;
+import org.matsim.analysis.DefaultAnalysisMainModeIdentifier;
 import org.matsim.analysis.RunPersonTripAnalysis;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.events.PersonMoneyEvent;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
 import org.matsim.core.config.Config;
@@ -40,6 +43,8 @@ import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.controler.events.AfterMobsimEvent;
+import org.matsim.core.controler.listener.AfterMobsimListener;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.population.routes.RouteFactories;
@@ -47,6 +52,7 @@ import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.core.utils.misc.Time;
 import org.matsim.prepare.population.AssignIncome;
 import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
@@ -54,6 +60,7 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
@@ -67,6 +74,8 @@ public final class RunBerlinScenario {
 
 	private static final Logger log = Logger.getLogger(RunBerlinScenario.class );
 
+	public static final HashMap<Id<Person>, Double > personsWithMobilityBudget = new HashMap<>();
+
 	public static void main(String[] args) {
 		
 		for (String arg : args) {
@@ -74,7 +83,7 @@ public final class RunBerlinScenario {
 		}
 		
 		if ( args.length==0 ) {
-			args = new String[] {"scenarios/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"}  ;
+			args = new String[] {"scenarios/berlin-v5.5-1pct/input/berlin-v5.5-1pct.config.xml"}  ;
 		}
 
 		Config config = prepareConfig( args ) ;
@@ -89,7 +98,9 @@ public final class RunBerlinScenario {
 		Gbl.assertNotNull(scenario);
 		
 		final Controler controler = new Controler( scenario );
-		
+
+		MobilityBudgetEventHandler mobilityBudgetEventHandler = new MobilityBudgetEventHandler();
+
 		if (controler.getConfig().transit().isUseTransit()) {
 			// use the sbb pt raptor router
 			controler.addOverridingModule( new AbstractModule() {
@@ -112,12 +123,46 @@ public final class RunBerlinScenario {
 			public void install() {
 				addTravelTimeBinding( TransportMode.ride ).to( networkTravelTime() );
 				addTravelDisutilityFactoryBinding( TransportMode.ride ).to( carTravelDisutilityFactoryKey() );
+
+
 				bind(AnalysisMainModeIdentifier.class).to(OpenBerlinIntermodalPtDrtRouterModeIdentifier.class);
 				
 				//use income-dependent marginal utility of money for scoring
 				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
+				bind(AnalysisMainModeIdentifier.class).to(DefaultAnalysisMainModeIdentifier.class);
+
+
 			}
 		} );
+
+		controler.addOverridingModule( new AbstractModule() {
+			@Override
+			public void install() {
+				addEventHandlerBinding().toInstance(mobilityBudgetEventHandler);
+			}
+		} );
+
+
+
+
+
+
+		controler.addControlerListener(new AfterMobsimListener() {
+			@Override
+			public void notifyAfterMobsim(AfterMobsimEvent afterMobsimEvent) {
+				log.info("notifiy after mobsim event");
+				for (Id<Person> personId : personsWithMobilityBudget.keySet()) {
+					if (personsWithMobilityBudget.get(personId)>0) {
+						//set time to null??
+
+						log.info("Throwing Money Event");
+						afterMobsimEvent.getServices().getEvents().processEvent(new PersonMoneyEvent(Time.MIDNIGHT, personId, personsWithMobilityBudget.get(personId), null, null));
+					}
+				}
+			}
+		});
+
+
 
 		return controler;
 	}
@@ -143,11 +188,22 @@ public final class RunBerlinScenario {
 
 		BerlinExperimentalConfigGroup berlinCfg = ConfigUtils.addOrGetModule(config, BerlinExperimentalConfigGroup.class);
 		if (berlinCfg.getPopulationDownsampleFactor() != 1.0) {
-			downsample(scenario.getPopulation().getPersons(), berlinCfg.getPopulationDownsampleFactor());
+			downsample(scenario.getPopulation().getPersons(), 0.999999999999);
 		}
 
+
+		for (Person person : scenario.getPopulation().getPersons().values()) {
+			log.info("Put"+ person.getId()+ "person in MobilityBudgetMap");
+			personsWithMobilityBudget.put(person.getId(), 0.0);
+
+		}
 		AssignIncome.assignIncomeToPersonSubpopulationAccordingToGermanyAverage(scenario.getPopulation());
 		return scenario;
+
+
+
+
+
 	}
 
 	public static Config prepareConfig( String [] args, ConfigGroup... customModules ){
@@ -209,7 +265,6 @@ public final class RunBerlinScenario {
 		config.planCalcScore().addActivityParams( new ActivityParams( "freight" ).setTypicalDuration( 12.*3600. ) );
 
 		ConfigUtils.applyCommandline( config, typedArgs ) ;
-
 		return config ;
 	}
 	
